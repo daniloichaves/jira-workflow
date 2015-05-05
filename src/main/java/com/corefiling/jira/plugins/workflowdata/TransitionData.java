@@ -14,6 +14,9 @@ public class TransitionData
     @JsonProperty
     private List<FunctionData> functions = Lists.newArrayList();
 
+    @JsonProperty
+    private List<ConditionData> conditions = Lists.newArrayList();
+
     public TransitionData()
     {
     }
@@ -34,9 +37,20 @@ public class TransitionData
         return functions;
     }
 
+    public List<ConditionData> getConditions()
+    {
+        return conditions;
+    }
+
     public TransitionData setFunctions(List<FunctionData> functions)
     {
         this.functions = functions;
+        return this;
+    }
+
+    public TransitionData setConditions(List<ConditionData> conditions)
+    {
+        this.conditions = conditions;
         return this;
     }
 }

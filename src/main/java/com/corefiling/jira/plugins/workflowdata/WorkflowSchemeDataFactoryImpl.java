@@ -17,12 +17,16 @@ import com.atlassian.jira.workflow.DraftWorkflowScheme;
 import com.atlassian.jira.workflow.JiraWorkflow;
 import com.atlassian.jira.workflow.WorkflowScheme;
 import com.atlassian.jira.workflow.WorkflowSchemeManager;
+import com.corefiling.jira.plugins.workflowdata.util.DescriptorUtil;
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Lists;
 import com.opensymphony.workflow.loader.ActionDescriptor;
+import com.opensymphony.workflow.loader.ConditionDescriptor;
 import com.opensymphony.workflow.loader.FunctionDescriptor;
+import com.opensymphony.workflow.loader.RestrictionDescriptor;
 import com.opensymphony.workflow.loader.StepDescriptor;
+import com.opensymphony.workflow.loader.ValidatorDescriptor;
 import org.ofbiz.core.entity.GenericEntityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,6 +153,22 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                         functions.add(function);
                     }
                     transition.setFunctions(functions);
+                    List<ConditionData> conditions = Lists.newArrayList();
+                    for (ConditionDescriptor condition : DescriptorUtil.getConditionsForTransition(a))
+                    {
+                        ConditionData conditionData = new ConditionData();
+                        String className = (String) condition.getArgs().get("class.name");
+                        if (className != null)
+                        {
+                            conditionData.setClassName(className);
+                        }
+                        else
+                        {
+                            conditionData.setClassName("UNKNOWN");
+                        }
+                        conditions.add(conditionData);
+                    }
+                    transition.setConditions(conditions);
                     transitions.add(transition);
                 }
                 statusDatum.setTransitions(transitions);
