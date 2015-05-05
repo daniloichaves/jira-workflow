@@ -12,10 +12,10 @@ public class TransitionData
     private String name;
 
     @JsonProperty
-    private List<FunctionData> functions = Lists.newArrayList();
+    private List<DescriptorData> functions = Lists.newArrayList();
 
     @JsonProperty
-    private List<ConditionData> conditions = Lists.newArrayList();
+    private List<DescriptorData> conditions = Lists.newArrayList();
 
     public TransitionData()
     {
@@ -32,23 +32,23 @@ public class TransitionData
         return this;
     }
 
-    public List<FunctionData> getFunctions()
+    public List<DescriptorData> getFunctions()
     {
         return functions;
     }
 
-    public List<ConditionData> getConditions()
+    public List<DescriptorData> getConditions()
     {
         return conditions;
     }
 
-    public TransitionData setFunctions(List<FunctionData> functions)
+    public TransitionData setFunctions(List<DescriptorData> functions)
     {
         this.functions = functions;
         return this;
     }
 
-    public TransitionData setConditions(List<ConditionData> conditions)
+    public TransitionData setConditions(List<DescriptorData> conditions)
     {
         this.conditions = conditions;
         return this;

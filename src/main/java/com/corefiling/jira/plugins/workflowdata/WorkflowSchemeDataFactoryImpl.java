@@ -10,6 +10,8 @@ import com.atlassian.jira.datetime.DateTimeFormatter;
 import com.atlassian.jira.datetime.DateTimeStyle;
 import com.atlassian.jira.issue.issuetype.IssueType;
 import com.atlassian.jira.issue.status.Status;
+import com.atlassian.jira.web.bean.WorkflowDescriptorFormatBean;
+import com.atlassian.plugin.PluginAccessor;
 import com.atlassian.jira.scheme.Scheme;
 import com.atlassian.jira.scheme.SchemeEntity;
 import com.atlassian.jira.workflow.AssignableWorkflowScheme;
@@ -41,14 +43,16 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
     private final IssueTypeManager issueTypeManager;
     private final WorkflowSchemeManager workflowSchemeManager;
     private final DateTimeFormatter formatter;
+    private final PluginAccessor pluginAccessor;
 
     private static final Logger LOG = LoggerFactory.getLogger("atlassian.plugin");
 
     WorkflowSchemeDataFactoryImpl(IssueTypeManager issueTypeManager, WorkflowSchemeManager workflowSchemeManager,
-            DateTimeFormatter formatter)
+            PluginAccessor pluginAccessor, DateTimeFormatter formatter)
     {
         this.issueTypeManager = issueTypeManager;
         this.workflowSchemeManager = workflowSchemeManager;
+        this.pluginAccessor = pluginAccessor;
         this.formatter = formatter.withStyle(DateTimeStyle.ISO_8601_DATE_TIME).withLocale(Locale.ENGLISH);
     }
 
@@ -134,37 +138,44 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                 StatusData statusDatum = new StatusData().setName(s.getName())
                                                         .setStepName(stepDescriptor.getName());
                 List<TransitionData> transitions = Lists.newArrayList();
+                WorkflowDescriptorFormatBean workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
                 for (ActionDescriptor a : workflow.getActionsWithResult(stepDescriptor))
                 {
                     TransitionData transition = new TransitionData().setName(a.getName());
-                    List<FunctionData> functions = Lists.newArrayList();
+                    List<DescriptorData> functions = Lists.newArrayList();
                     for (FunctionDescriptor func : workflow.getPostFunctionsForTransition(a))
                     {
-                        FunctionData function = new FunctionData();
+                        DescriptorData function = new DescriptorData();
                         String className = (String) func.getArgs().get("class.name");
                         if (className != null)
                         {
+                            workflowFormatter.setPluginType("workflow-function");
+                            function.setDescription(workflowFormatter.formatDescriptor(func).getDescription());
                             function.setClassName(className);
                         }
                         else
                         {
                             function.setClassName("UNKNOWN");
+                            function.setDescription("UNKNOWN");
                         }
                         functions.add(function);
                     }
                     transition.setFunctions(functions);
-                    List<ConditionData> conditions = Lists.newArrayList();
+                    List<DescriptorData> conditions = Lists.newArrayList();
                     for (ConditionDescriptor condition : DescriptorUtil.getConditionsForTransition(a))
                     {
-                        ConditionData conditionData = new ConditionData();
+                        DescriptorData conditionData = new DescriptorData();
                         String className = (String) condition.getArgs().get("class.name");
                         if (className != null)
                         {
+                            workflowFormatter.setPluginType("workflow-condition");
+                            conditionData.setDescription(workflowFormatter.formatDescriptor(condition).getDescription());
                             conditionData.setClassName(className);
                         }
                         else
                         {
                             conditionData.setClassName("UNKNOWN");
+                            conditionData.setDescription("UNKNOWN");
                         }
                         conditions.add(conditionData);
                     }
