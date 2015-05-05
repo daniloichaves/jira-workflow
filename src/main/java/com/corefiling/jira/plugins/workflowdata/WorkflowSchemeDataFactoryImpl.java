@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
 
 public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
 {
@@ -151,11 +153,15 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                         {
                             workflowFormatter.setPluginType("workflow-function");
                             function.setDescription(workflowFormatter.formatDescriptor(func).getDescription());
-                            function.setClassName(className);
+                            HashMap<String, String> parameters = new HashMap<String, String>();
+                            for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)func.getArgs().entrySet())
+                            {
+                                parameters.put((String) entry.getKey(), (String) entry.getValue());
+                            }
+                            function.setParameters(parameters);
                         }
                         else
                         {
-                            function.setClassName("UNKNOWN");
                             function.setDescription("UNKNOWN");
                         }
                         functions.add(function);
@@ -170,11 +176,16 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                         {
                             workflowFormatter.setPluginType("workflow-condition");
                             conditionData.setDescription(workflowFormatter.formatDescriptor(condition).getDescription());
-                            conditionData.setClassName(className);
+                            HashMap<String, String> parameters = new HashMap<String, String>();
+                            for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)condition.getArgs().entrySet())
+                            {
+                                parameters.put((String) entry.getKey(), (String) entry.getValue());
+                            }
+
+                            conditionData.setParameters(parameters);
                         }
                         else
                         {
-                            conditionData.setClassName("UNKNOWN");
                             conditionData.setDescription("UNKNOWN");
                         }
                         conditions.add(conditionData);
