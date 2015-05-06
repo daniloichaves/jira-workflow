@@ -138,7 +138,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
             {
                 StepDescriptor stepDescriptor = workflow.getLinkedStep(s);
                 StatusData statusDatum = new StatusData().setName(s.getName())
-                                                        .setStepName(stepDescriptor.getName());
+                                                        .setStepName(stepDescriptor.getName()).setCategory(s.getStatusCategory().getName());
                 List<TransitionData> transitions = Lists.newArrayList();
                 WorkflowDescriptorFormatBean workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
                 for (ActionDescriptor a : workflow.getActionsWithResult(stepDescriptor))

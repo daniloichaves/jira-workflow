@@ -9,6 +9,9 @@ import java.util.List;
 public class StatusData
 {
     @JsonProperty
+    private String category;
+
+    @JsonProperty
     private String name;
 
     @JsonProperty
@@ -19,6 +22,17 @@ public class StatusData
 
     public StatusData()
     {
+    }
+
+    public String getId()
+    {
+        return category;
+    }
+
+    public StatusData setCategory(String category)
+    {
+        this.category = category;
+        return this;
     }
 
     public String getName()
