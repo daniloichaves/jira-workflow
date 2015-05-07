@@ -50,6 +50,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
     private final DateTimeFormatter formatter;
     private final PluginAccessor pluginAccessor;
     private final FieldScreenManager fieldScreenManager;
+    private final WorkflowDescriptorFormatBean workflowFormatter;
 
     private static final Logger LOG = LoggerFactory.getLogger("atlassian.plugin");
 
@@ -61,6 +62,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         this.pluginAccessor = pluginAccessor;
         this.fieldScreenManager = fieldScreenManager;
         this.formatter = formatter.withStyle(DateTimeStyle.ISO_8601_DATE_TIME).withLocale(Locale.ENGLISH);
+        this.workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
     }
 
     @Override
@@ -110,6 +112,114 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         return data;
     }
 
+    private List<DescriptorData> getFunctions(final JiraWorkflow workflow, final ActionDescriptor transition)
+    {
+        List<DescriptorData> functions = Lists.newArrayList();
+        for (FunctionDescriptor func : workflow.getPostFunctionsForTransition(transition))
+        {
+            DescriptorData function = new DescriptorData();
+            String className = (String) func.getArgs().get("class.name");
+            if (className != null)
+            {
+                workflowFormatter.setPluginType("workflow-function");
+                function.setDescription(workflowFormatter.formatDescriptor(func).getDescription());
+                HashMap<String, String> parameters = new HashMap<String, String>();
+                for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)func.getArgs().entrySet())
+                {
+                    parameters.put((String) entry.getKey(), (String) entry.getValue());
+                }
+                function.setParameters(parameters);
+            }
+            else
+            {
+                function.setDescription("UNKNOWN");
+            }
+            functions.add(function);
+        }
+        return functions;
+    }
+
+    private List<DescriptorData> getConditions(final JiraWorkflow workflow, final ActionDescriptor transition)
+    {
+        List<DescriptorData> conditions = Lists.newArrayList();
+        for (ConditionDescriptor condition : DescriptorUtil.getConditionsForTransition(transition))
+        {
+            DescriptorData conditionData = new DescriptorData();
+            String className = (String) condition.getArgs().get("class.name");
+            if (className != null)
+            {
+                workflowFormatter.setPluginType("workflow-condition");
+                conditionData.setDescription(workflowFormatter.formatDescriptor(condition).getDescription());
+                HashMap<String, String> parameters = new HashMap<String, String>();
+                for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)condition.getArgs().entrySet())
+                {
+                    parameters.put((String) entry.getKey(), (String) entry.getValue());
+                }
+
+                conditionData.setParameters(parameters);
+            }
+            else
+            {
+                conditionData.setDescription("UNKNOWN");
+            }
+            conditions.add(conditionData);
+        }
+        return conditions;
+    }
+
+    private List<String> getScreens(final JiraWorkflow workflow, final ActionDescriptor transition, final Map<Integer, List<FieldScreen>> screensForAction)
+    {
+        List<String> screens = Lists.newArrayList();
+        if (screensForAction.get(transition.getId()) != null)
+        {
+          for (FieldScreen fieldScreen : screensForAction.get(transition.getId()))
+          {
+              screens.add(fieldScreen.getName());
+          }
+        }
+        return screens;
+    }
+
+    private Status getTargetStatus(final JiraWorkflow workflow, final ActionDescriptor transition)
+    {
+        StepDescriptor targetStep = workflow.getDescriptor().getStep(transition.getUnconditionalResult().getStep());
+        return workflow.getLinkedStatusObject(targetStep);
+    }
+
+    private List<TransitionData> getTransitions(final JiraWorkflow workflow, final StepDescriptor step, final Map<Integer, List<FieldScreen>> screensForAction)
+    {
+        List<TransitionData> transitions = Lists.newArrayList();
+        for (Object transitionObject : workflow.getDescriptor().getStep(step.getId()).getActions())
+        {
+            ActionDescriptor transitionAction = (ActionDescriptor) transitionObject;
+            Status targetStatus = getTargetStatus(workflow, transitionAction);
+            transitions.add(new TransitionData().setName(transitionAction.getName())
+                                                .setId(transitionAction.getId())
+                                                .setToStatus(targetStatus.getName())
+                                                .setToCategory(targetStatus.getStatusCategory().getName())
+                                                .setScreens(getScreens(workflow, transitionAction, screensForAction))
+                                                .setFunctions(getFunctions(workflow, transitionAction))
+                                                .setConditions(getConditions(workflow, transitionAction)));
+        }
+        return transitions;
+    }
+
+    private List<StatusData> getStatuses(final JiraWorkflow workflow)
+    {
+        List<StatusData> statusData = Lists.newArrayList();
+        Map<Integer, List<FieldScreen>> screensForAction = getScreensForAction(workflow);
+
+        for (Status status : workflow.getLinkedStatusObjects())
+        {
+            StepDescriptor step = workflow.getLinkedStep(status);
+            statusData.add(new StatusData().setName(status.getName())
+                                           .setStepName(step.getName())
+                                           .setCategory(status.getStatusCategory().getName())
+                                           .setTransitions(getTransitions(workflow, step, screensForAction)));
+        }
+        return statusData;
+    }
+
     @Override
     public WorkflowSchemeData toData(Scheme scheme)
     {
@@ -138,92 +248,12 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         LOG.info("finding workflows scheme");
         for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(scheme))
         {
-            List<StatusData> statusData = Lists.newArrayList();
-            Map<Integer, List<FieldScreen>> screensForAction = getScreensForAction(workflow);
-
-            for (Status s : workflow.getLinkedStatusObjects())
-            {
-                StepDescriptor stepDescriptor = workflow.getLinkedStep(s);
-                StatusData statusDatum = new StatusData().setName(s.getName())
-                                                        .setStepName(stepDescriptor.getName()).setCategory(s.getStatusCategory().getName());
-                List<TransitionData> transitions = Lists.newArrayList();
-                WorkflowDescriptorFormatBean workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
-                for (Object aObj : workflow.getDescriptor().getStep(stepDescriptor.getId()).getActions())
-                {
-                    ActionDescriptor a = (ActionDescriptor) aObj;
-                    TransitionData transition = new TransitionData().setName(a.getName()).setId(a.getId());
-                    StepDescriptor destinationStep = workflow.getDescriptor().getStep(a.getUnconditionalResult().getStep());
-                    Status destinationStatus = workflow.getLinkedStatusObject(destinationStep);
-                    transition.setToStatus(destinationStatus.getName()).setToCategory(destinationStatus.getStatusCategory().getName());
-
-                    List<String> screens = Lists.newArrayList();
-
-                    if (screensForAction.get(a.getId()) != null)
-                    {
-                      for (FieldScreen fieldScreen : screensForAction.get(a.getId()))
-                      {
-                          screens.add(fieldScreen.getName());
-                      }
-                      transition.setScreens(screens);
-                    }
-                    List<DescriptorData> functions = Lists.newArrayList();
-                    for (FunctionDescriptor func : workflow.getPostFunctionsForTransition(a))
-                    {
-                        DescriptorData function = new DescriptorData();
-                        String className = (String) func.getArgs().get("class.name");
-                        if (className != null)
-                        {
-                            workflowFormatter.setPluginType("workflow-function");
-                            function.setDescription(workflowFormatter.formatDescriptor(func).getDescription());
-                            HashMap<String, String> parameters = new HashMap<String, String>();
-                            for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)func.getArgs().entrySet())
-                            {
-                                parameters.put((String) entry.getKey(), (String) entry.getValue());
-                            }
-                            function.setParameters(parameters);
-                        }
-                        else
-                        {
-                            function.setDescription("UNKNOWN");
-                        }
-                        functions.add(function);
-                    }
-                    transition.setFunctions(functions);
-                    List<DescriptorData> conditions = Lists.newArrayList();
-                    for (ConditionDescriptor condition : DescriptorUtil.getConditionsForTransition(a))
-                    {
-                        DescriptorData conditionData = new DescriptorData();
-                        String className = (String) condition.getArgs().get("class.name");
-                        if (className != null)
-                        {
-                            workflowFormatter.setPluginType("workflow-condition");
-                            conditionData.setDescription(workflowFormatter.formatDescriptor(condition).getDescription());
-                            HashMap<String, String> parameters = new HashMap<String, String>();
-                            for (Map.Entry<Object, Object> entry : (Set<Map.Entry>)condition.getArgs().entrySet())
-                            {
-                                parameters.put((String) entry.getKey(), (String) entry.getValue());
-                            }
-
-                            conditionData.setParameters(parameters);
-                        }
-                        else
-                        {
-                            conditionData.setDescription("UNKNOWN");
-                        }
-                        conditions.add(conditionData);
-                    }
-                    transition.setConditions(conditions);
-                    transitions.add(transition);
-                }
-                statusDatum.setTransitions(transitions);
-                statusData.add(statusDatum);
-            }
 
             LOG.info("Found workflow: " + workflow.getName());
             WorkflowData workflowData = new WorkflowData().setName(workflow.getName())
                                             .setActive(workflow.isActive())
                                             .setIsDefault(workflow.isDefault())
-                                            .setStates(statusData);
+                                            .setStates(getStatuses(workflow));
             if (workflow.getUpdatedDate() != null)
             {
                 workflowData.setLastModified(formatter.format(workflow.getUpdatedDate()));
@@ -236,9 +266,13 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         }
 
         return new WorkflowSchemeData().setId(scheme.getId())
-                .setName(scheme.getName()).setDescription(scheme.getDescription())
-                .setMappings(mappings).setDefaultWorkflow(defaultWorkflow).setDraft(false)
-                .setActive(!workflowSchemeManager.getProjects(scheme).isEmpty()).setWorkflows(workflows);
+                                       .setName(scheme.getName())
+                                       .setDescription(scheme.getDescription())
+                                       .setMappings(mappings)
+                                       .setDefaultWorkflow(defaultWorkflow)
+                                       .setDraft(false)
+                                       .setActive(!workflowSchemeManager.getProjects(scheme).isEmpty())
+                                       .setWorkflows(workflows);
     }
 
     Function<Scheme, WorkflowSchemeData> fromSchemeToDataFunction()
