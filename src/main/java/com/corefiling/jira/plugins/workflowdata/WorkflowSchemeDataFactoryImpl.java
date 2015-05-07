@@ -8,6 +8,8 @@ import com.atlassian.jira.config.IssueTypeManager;
 import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.datetime.DateTimeFormatter;
 import com.atlassian.jira.datetime.DateTimeStyle;
+import com.atlassian.jira.issue.fields.screen.FieldScreen;
+import com.atlassian.jira.issue.fields.screen.FieldScreenManager;
 import com.atlassian.jira.issue.issuetype.IssueType;
 import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.web.bean.WorkflowDescriptorFormatBean;
@@ -33,6 +35,7 @@ import org.ofbiz.core.entity.GenericEntityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Collection;
 import java.util.Locale;
@@ -46,15 +49,17 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
     private final WorkflowSchemeManager workflowSchemeManager;
     private final DateTimeFormatter formatter;
     private final PluginAccessor pluginAccessor;
+    private final FieldScreenManager fieldScreenManager;
 
     private static final Logger LOG = LoggerFactory.getLogger("atlassian.plugin");
 
     WorkflowSchemeDataFactoryImpl(IssueTypeManager issueTypeManager, WorkflowSchemeManager workflowSchemeManager,
-            PluginAccessor pluginAccessor, DateTimeFormatter formatter)
+            PluginAccessor pluginAccessor, FieldScreenManager fieldScreenManager, DateTimeFormatter formatter)
     {
         this.issueTypeManager = issueTypeManager;
         this.workflowSchemeManager = workflowSchemeManager;
         this.pluginAccessor = pluginAccessor;
+        this.fieldScreenManager = fieldScreenManager;
         this.formatter = formatter.withStyle(DateTimeStyle.ISO_8601_DATE_TIME).withLocale(Locale.ENGLISH);
     }
 
@@ -134,6 +139,8 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(scheme))
         {
             List<StatusData> statusData = Lists.newArrayList();
+            Map<Integer, List<FieldScreen>> screensForAction = getScreensForAction(workflow);
+
             for (Status s : workflow.getLinkedStatusObjects())
             {
                 StepDescriptor stepDescriptor = workflow.getLinkedStep(s);
@@ -141,9 +148,24 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                                                         .setStepName(stepDescriptor.getName()).setCategory(s.getStatusCategory().getName());
                 List<TransitionData> transitions = Lists.newArrayList();
                 WorkflowDescriptorFormatBean workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
-                for (ActionDescriptor a : workflow.getActionsWithResult(stepDescriptor))
+                for (Object aObj : workflow.getDescriptor().getStep(stepDescriptor.getId()).getActions())
                 {
-                    TransitionData transition = new TransitionData().setName(a.getName());
+                    ActionDescriptor a = (ActionDescriptor) aObj;
+                    TransitionData transition = new TransitionData().setName(a.getName()).setId(a.getId());
+                    StepDescriptor destinationStep = workflow.getDescriptor().getStep(a.getUnconditionalResult().getStep());
+                    Status destinationStatus = workflow.getLinkedStatusObject(destinationStep);
+                    transition.setToStatus(destinationStatus.getName()).setToCategory(destinationStatus.getStatusCategory().getName());
+
+                    List<String> screens = Lists.newArrayList();
+
+                    if (screensForAction.get(a.getId()) != null)
+                    {
+                      for (FieldScreen fieldScreen : screensForAction.get(a.getId()))
+                      {
+                          screens.add(fieldScreen.getName());
+                      }
+                      transition.setScreens(screens);
+                    }
                     List<DescriptorData> functions = Lists.newArrayList();
                     for (FunctionDescriptor func : workflow.getPostFunctionsForTransition(a))
                     {
@@ -242,6 +264,27 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         DraftWorkflowScheme.Builder builder = current.builder().clearMappings();
         setMappings(data, builder);
         return builder.build();
+    }
+
+    private Map<Integer, List<FieldScreen>> getScreensForAction(final JiraWorkflow workflow)
+    {
+        Map<Integer, List<FieldScreen>> screensForAction = Maps.newHashMap();
+        for (FieldScreen screen : fieldScreenManager.getFieldScreens())
+        {
+            for (ActionDescriptor action : workflow.getActionsForScreen(screen))
+            {
+                if (action.hasId())
+                {
+                  int actionId = action.getId();
+                  if (screensForAction.get(actionId) == null)
+                  {
+                      screensForAction.put(actionId, new ArrayList<FieldScreen>());
+                  }
+                  screensForAction.get(actionId).add(screen);
+                }
+            }
+        }
+        return screensForAction;
     }
 
     private void setMappings(WorkflowSchemeData data, WorkflowScheme.Builder<?> builder)

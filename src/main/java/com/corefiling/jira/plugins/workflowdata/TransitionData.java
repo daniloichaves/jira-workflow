@@ -12,10 +12,22 @@ public class TransitionData
     private String name;
 
     @JsonProperty
+    private int id;
+
+    @JsonProperty
     private List<DescriptorData> functions = Lists.newArrayList();
 
     @JsonProperty
     private List<DescriptorData> conditions = Lists.newArrayList();
+
+    @JsonProperty
+    private List<String> screens = Lists.newArrayList();
+
+    @JsonProperty
+    private String toStatus;
+
+    @JsonProperty
+    private String toCategory;
 
     public TransitionData()
     {
@@ -29,6 +41,17 @@ public class TransitionData
     public TransitionData setName(String name)
     {
         this.name = name;
+        return this;
+    }
+
+    public int getId()
+    {
+        return id;
+    }
+
+    public TransitionData setId(int id)
+    {
+        this.id = id;
         return this;
     }
 
@@ -51,6 +74,39 @@ public class TransitionData
     public TransitionData setConditions(List<DescriptorData> conditions)
     {
         this.conditions = conditions;
+        return this;
+    }
+
+    public List<String> getScreens()
+    {
+        return screens;
+    }
+
+    public TransitionData setScreens(List<String> screens)
+    {
+        this.screens = screens;
+        return this;
+    }
+
+    public String getToStatus()
+    {
+        return toStatus;
+    }
+
+    public TransitionData setToStatus(String toStatus)
+    {
+        this.toStatus = toStatus;
+        return this;
+    }
+
+    public String getToCategory()
+    {
+        return toCategory;
+    }
+
+    public TransitionData setToCategory(String toCategory)
+    {
+        this.toCategory = toCategory;
         return this;
     }
 }

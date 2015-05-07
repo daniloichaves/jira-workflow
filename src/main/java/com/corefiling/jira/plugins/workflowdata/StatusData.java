@@ -18,6 +18,9 @@ public class StatusData
     private String stepName;
 
     @JsonProperty
+    private String fromStep;
+
+    @JsonProperty
     private List<TransitionData> transitions = Lists.newArrayList();
 
     public StatusData()
