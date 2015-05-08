@@ -310,7 +310,7 @@ public class WorkflowSchemeResource
 
     private Response getAllSchemes()
     {
-        Iterable<WorkflowSchemeData> schemeObjects = Iterables.transform(workflowSchemeManager.getSchemeObjects(), dataFactory.fromSchemeToDataFunction());
+        Iterable<WorkflowSchemeData> schemeObjects = Iterables.transform(workflowSchemeManager.getAssignableSchemes(), dataFactory.fromSchemeToDataFunction());
         return Response.ok(schemeObjects).cacheControl(CacheControl.never()).build();
     }
 

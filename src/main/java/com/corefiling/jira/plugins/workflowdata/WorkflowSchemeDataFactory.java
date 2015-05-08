@@ -4,12 +4,9 @@
  */
 package com.corefiling.jira.plugins.workflowdata;
 
-import com.atlassian.jira.scheme.Scheme;
 import com.atlassian.jira.workflow.WorkflowScheme;
 
 public interface WorkflowSchemeDataFactory
 {
     WorkflowSchemeData toData(WorkflowScheme scheme);
-
-    WorkflowSchemeData toData(Scheme scheme);
 }

@@ -14,8 +14,6 @@ import com.atlassian.jira.issue.issuetype.IssueType;
 import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.web.bean.WorkflowDescriptorFormatBean;
 import com.atlassian.plugin.PluginAccessor;
-import com.atlassian.jira.scheme.Scheme;
-import com.atlassian.jira.scheme.SchemeEntity;
 import com.atlassian.jira.workflow.AssignableWorkflowScheme;
 import com.atlassian.jira.workflow.DraftWorkflowScheme;
 import com.atlassian.jira.workflow.JiraWorkflow;
@@ -28,16 +26,12 @@ import com.google.common.collect.Lists;
 import com.opensymphony.workflow.loader.ActionDescriptor;
 import com.opensymphony.workflow.loader.ConditionDescriptor;
 import com.opensymphony.workflow.loader.FunctionDescriptor;
-import com.opensymphony.workflow.loader.RestrictionDescriptor;
 import com.opensymphony.workflow.loader.StepDescriptor;
-import com.opensymphony.workflow.loader.ValidatorDescriptor;
-import org.ofbiz.core.entity.GenericEntityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Collection;
 import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
@@ -63,53 +57,6 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         this.fieldScreenManager = fieldScreenManager;
         this.formatter = formatter.withStyle(DateTimeStyle.ISO_8601_DATE_TIME).withLocale(Locale.ENGLISH);
         this.workflowFormatter = new WorkflowDescriptorFormatBean(pluginAccessor);
-    }
-
-    @Override
-    public WorkflowSchemeData toData(WorkflowScheme scheme)
-    {
-        String defaultWorkflow = null;
-        Map<String, String> map = Maps.newHashMap();
-        for (Map.Entry<String, String> entry : scheme.getMappings().entrySet())
-        {
-            String key = entry.getKey();
-            if (key != null)
-            {
-                key = issueTypeManager.getIssueType(key).getName();
-                map.put(key, entry.getValue());
-            }
-            else
-            {
-                defaultWorkflow = entry.getValue();
-            }
-        }
-
-        List<WorkflowData> workflows = Lists.newArrayList();
-        try
-        {
-            LOG.info("finding workflows");
-            for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(workflowSchemeManager.getScheme(scheme.getId())))
-            {
-                LOG.info("Found workflow: " + workflow.getName());
-                workflows.add(new WorkflowData().setName(workflow.getName()));
-            }
-        }
-        catch (GenericEntityException e)
-        {
-            LOG.warn("Failed to get Workflows: " + e.toString());
-        }
-        final WorkflowSchemeData data = new WorkflowSchemeData().setId(scheme.getId())
-                .setName(scheme.getName()).setDescription(scheme.getDescription())
-                .setMappings(map).setDefaultWorkflow(defaultWorkflow).setDraft(scheme.isDraft())
-                .setActive(workflowSchemeManager.isActive(scheme)).setWorkflows(workflows);
-
-        if (scheme instanceof DraftWorkflowScheme)
-        {
-            DraftWorkflowScheme draftWorkflowScheme = (DraftWorkflowScheme) scheme;
-            data.setLastModified(formatter.format(draftWorkflowScheme.getLastModifiedDate()));
-            data.setLastModifiedUser(draftWorkflowScheme.getLastModifiedUser().getName());
-        }
-        return data;
     }
 
     private List<DescriptorData> getFunctions(final JiraWorkflow workflow, final ActionDescriptor transition)
@@ -167,7 +114,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         return conditions;
     }
 
-    private List<String> getScreens(final JiraWorkflow workflow, final ActionDescriptor transition, final Map<Integer, List<FieldScreen>> screensForAction)
+    private List<String> getScreens(final ActionDescriptor transition, final Map<Integer, List<FieldScreen>> screensForAction)
     {
         List<String> screens = Lists.newArrayList();
         if (screensForAction.get(transition.getId()) != null)
@@ -197,7 +144,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                                                 .setId(transitionAction.getId())
                                                 .setToStatus(targetStatus.getName())
                                                 .setToCategory(targetStatus.getStatusCategory().getName())
-                                                .setScreens(getScreens(workflow, transitionAction, screensForAction))
+                                                .setScreens(getScreens(transitionAction, screensForAction))
                                                 .setFunctions(getFunctions(workflow, transitionAction))
                                                 .setConditions(getConditions(workflow, transitionAction)));
         }
@@ -221,32 +168,27 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
     }
 
     @Override
-    public WorkflowSchemeData toData(Scheme scheme)
+    public WorkflowSchemeData toData(WorkflowScheme scheme)
     {
-        Map<String, String> mappings = Maps.newHashMap();
-        Collection<SchemeEntity> entities = scheme.getEntities();
-        String defaultWorkflow =null;
-        for (SchemeEntity entity : entities)
+        String defaultWorkflow = null;
+        Map<String, String> map = Maps.newHashMap();
+        for (Map.Entry<String, String> entry : scheme.getMappings().entrySet())
         {
-            String parameter = entity.getParameter();
-            if (parameter == null || "0".equals(parameter))
+            String key = entry.getKey();
+            if (key != null)
             {
-                defaultWorkflow = entity.getEntityTypeId().toString();
+                key = issueTypeManager.getIssueType(key).getName();
+                map.put(key, entry.getValue());
             }
             else
             {
-                IssueType object = issueTypeManager.getIssueType(parameter);
-                mappings.put(object.getName(), entity.getEntityTypeId().toString());
+                defaultWorkflow = entry.getValue();
             }
-        }
-        if (defaultWorkflow == null)
-        {
-            defaultWorkflow = JiraWorkflow.DEFAULT_WORKFLOW_NAME;
         }
 
         List<WorkflowData> workflows = Lists.newArrayList();
         LOG.info("finding workflows scheme");
-        for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(scheme))
+        for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(workflowSchemeManager.getSchemeObject(scheme.getId())))
         {
 
             LOG.info("Found workflow: " + workflow.getName());
@@ -268,19 +210,19 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         return new WorkflowSchemeData().setId(scheme.getId())
                                        .setName(scheme.getName())
                                        .setDescription(scheme.getDescription())
-                                       .setMappings(mappings)
+                                       .setMappings(map)
                                        .setDefaultWorkflow(defaultWorkflow)
-                                       .setDraft(false)
-                                       .setActive(!workflowSchemeManager.getProjects(scheme).isEmpty())
+                                       .setDraft(scheme.isDraft())
+                                       .setActive(workflowSchemeManager.isActive(scheme))
                                        .setWorkflows(workflows);
     }
 
-    Function<Scheme, WorkflowSchemeData> fromSchemeToDataFunction()
+    Function<WorkflowScheme, WorkflowSchemeData> fromSchemeToDataFunction()
     {
-        return new Function<Scheme, WorkflowSchemeData>()
+        return new Function<WorkflowScheme, WorkflowSchemeData>()
         {
             @Override
-            public WorkflowSchemeData apply(Scheme scheme) {
+            public WorkflowSchemeData apply(WorkflowScheme scheme) {
                 return toData(scheme);
             }
         };
