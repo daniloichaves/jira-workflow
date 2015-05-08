@@ -14,8 +14,6 @@ import com.atlassian.jira.issue.issuetype.IssueType;
 import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.web.bean.WorkflowDescriptorFormatBean;
 import com.atlassian.plugin.PluginAccessor;
-import com.atlassian.jira.workflow.AssignableWorkflowScheme;
-import com.atlassian.jira.workflow.DraftWorkflowScheme;
 import com.atlassian.jira.workflow.JiraWorkflow;
 import com.atlassian.jira.workflow.WorkflowScheme;
 import com.atlassian.jira.workflow.WorkflowSchemeManager;
@@ -227,20 +225,6 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                 return toData(scheme);
             }
         };
-    }
-
-    AssignableWorkflowScheme schemeFromData(WorkflowSchemeData data, AssignableWorkflowScheme.Builder current)
-    {
-        AssignableWorkflowScheme.Builder builder = current.setName(data.getName()).setDescription(data.getDescription());
-        setMappings(data, current);
-        return builder.build();
-    }
-
-    DraftWorkflowScheme draftFromData(WorkflowSchemeData data, DraftWorkflowScheme current)
-    {
-        DraftWorkflowScheme.Builder builder = current.builder().clearMappings();
-        setMappings(data, builder);
-        return builder.build();
     }
 
     private Map<Integer, List<FieldScreen>> getScreensForAction(final JiraWorkflow workflow)
