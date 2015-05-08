@@ -27,7 +27,7 @@ import static org.apache.commons.lang.StringUtils.stripToNull;
  * Used to expose data on configured workflows and schemes.
  */
 @Produces ({MediaType.APPLICATION_JSON})
-@Path ("/workflowscheme")
+@Path ("/workflowschemes")
 public class WorkflowSchemeResource
 {
     private final WorkflowSchemeManager workflowSchemeManager;

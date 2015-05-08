@@ -14,7 +14,7 @@
         <url>http://corefiling.com/</url>
     </organization>
 
-    <name>Workflowscheme</name>
+    <name>workflowdata</name>
     <description>Provides workflowscheme data</description>
     <packaging>atlassian-plugin</packaging>
 

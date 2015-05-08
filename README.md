@@ -5,7 +5,7 @@ workflow schemes and workflows.
 
 ## Location
 
-$JIRA_BASE/rest/workflowdata/1.0/workflowscheme
+$JIRA_BASE/rest/workflowdata/1.0/workflowschemes
 
 ## Running in the development environment
 
