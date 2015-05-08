@@ -23,12 +23,11 @@ import com.corefiling.jira.plugins.workflowdata.util.DescriptorUtil;
 import com.google.common.base.Function;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.opensymphony.workflow.loader.ActionDescriptor;
 import com.opensymphony.workflow.loader.ConditionDescriptor;
 import com.opensymphony.workflow.loader.FunctionDescriptor;
 import com.opensymphony.workflow.loader.StepDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,8 +44,6 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
     private final PluginAccessor pluginAccessor;
     private final FieldScreenManager fieldScreenManager;
     private final WorkflowDescriptorFormatBean workflowFormatter;
-
-    private static final Logger LOG = LoggerFactory.getLogger("atlassian.plugin");
 
     WorkflowSchemeDataFactoryImpl(IssueTypeManager issueTypeManager, WorkflowSchemeManager workflowSchemeManager,
             PluginAccessor pluginAccessor, FieldScreenManager fieldScreenManager, DateTimeFormatter formatter)
@@ -187,11 +184,15 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         }
 
         List<WorkflowData> workflows = Lists.newArrayList();
-        LOG.info("finding workflows scheme");
+        Set<String> workflowNames = Sets.newHashSet();
         for (JiraWorkflow workflow : ComponentAccessor.getWorkflowManager().getWorkflowsFromScheme(workflowSchemeManager.getSchemeObject(scheme.getId())))
         {
+            if (workflowNames.contains(workflow.getName()))
+            {
+                continue;
+            }
+            workflowNames.add(workflow.getName());
 
-            LOG.info("Found workflow: " + workflow.getName());
             WorkflowData workflowData = new WorkflowData().setName(workflow.getName())
                                             .setActive(workflow.isActive())
                                             .setIsDefault(workflow.isDefault())
