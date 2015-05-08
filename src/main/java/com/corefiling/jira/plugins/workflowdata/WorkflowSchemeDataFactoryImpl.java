@@ -10,7 +10,6 @@ import com.atlassian.jira.datetime.DateTimeFormatter;
 import com.atlassian.jira.datetime.DateTimeStyle;
 import com.atlassian.jira.issue.fields.screen.FieldScreen;
 import com.atlassian.jira.issue.fields.screen.FieldScreenManager;
-import com.atlassian.jira.issue.issuetype.IssueType;
 import com.atlassian.jira.issue.status.Status;
 import com.atlassian.jira.web.bean.WorkflowDescriptorFormatBean;
 import com.atlassian.plugin.PluginAccessor;
@@ -246,42 +245,6 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
             }
         }
         return screensForAction;
-    }
-
-    private void setMappings(WorkflowSchemeData data, WorkflowScheme.Builder<?> builder)
-    {
-        builder.clearMappings();
-        if (data.getDefaultWorkflow() != null)
-        {
-            builder.setDefaultWorkflow(data.getDefaultWorkflow());
-        }
-
-        for (Map.Entry<String, String> entry : data.getMappings().entrySet())
-        {
-            builder.setMapping(findIssueType(entry.getKey()), entry.getValue());
-        }
-    }
-
-    private String findIssueType(String type)
-    {
-        IssueType obj = issueTypeManager.getIssueType(type);
-        if (obj == null)
-        {
-            for (IssueType issueType : issueTypeManager.getIssueTypes())
-            {
-                if (issueType.getName().equals(type))
-                {
-                    obj = issueType;
-                    break;
-                }
-            }
-        }
-
-        if (obj == null)
-        {
-            throw new IllegalArgumentException("Unable to find IssueType with id or name of '" + type + "'.");
-        }
-        return obj.getId();
     }
 }
 
