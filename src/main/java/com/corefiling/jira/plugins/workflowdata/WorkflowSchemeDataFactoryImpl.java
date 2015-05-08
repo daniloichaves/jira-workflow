@@ -196,7 +196,7 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
             WorkflowData workflowData = new WorkflowData().setName(workflow.getName())
                                             .setActive(workflow.isActive())
                                             .setIsDefault(workflow.isDefault())
-                                            .setStates(getStatuses(workflow));
+                                            .setStatuses(getStatuses(workflow));
             if (workflow.getUpdatedDate() != null)
             {
                 workflowData.setLastModified(formatter.format(workflow.getUpdatedDate()));

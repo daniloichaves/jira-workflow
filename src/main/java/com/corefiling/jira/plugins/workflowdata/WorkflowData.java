@@ -24,7 +24,7 @@ public class WorkflowData
     private String lastModifiedBy;
 
     @JsonProperty
-    private List<StatusData> states = Lists.newArrayList();
+    private List<StatusData> statuses = Lists.newArrayList();
 
     public WorkflowData()
     {
@@ -85,14 +85,14 @@ public class WorkflowData
         return this;
     }
 
-    public List<StatusData> getStates()
+    public List<StatusData> getStatuses()
     {
-        return states;
+        return statuses;
     }
 
-    public WorkflowData setStates(List<StatusData> states)
+    public WorkflowData setStatuses(List<StatusData> statuses)
     {
-        this.states = states;
+        this.statuses = statuses;
         return this;
     }
 }
