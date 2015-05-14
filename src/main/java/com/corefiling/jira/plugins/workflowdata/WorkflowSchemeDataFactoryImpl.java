@@ -127,20 +127,31 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
         return workflow.getLinkedStatusObject(targetStep);
     }
 
+    private ActionDescriptor getCreateAction(final JiraWorkflow workflow)
+    {
+        // Assume that the create action has id=1
+        return workflow.getDescriptor().getInitialAction(1);
+    }
+
+    private TransitionData getTransitionData(final JiraWorkflow workflow, final ActionDescriptor transition, final Map<Integer, List<FieldScreen>> screensForAction)
+    {
+        Status targetStatus = getTargetStatus(workflow, transition);
+        return new TransitionData().setName(transition.getName())
+                .setId(transition.getId())
+                .setToStatus(targetStatus.getName())
+                .setToCategory(targetStatus.getStatusCategory().getName())
+                .setScreens(getScreens(transition, screensForAction))
+                .setFunctions(getFunctions(workflow, transition))
+                .setConditions(getConditions(workflow, transition));
+    }
+
     private List<TransitionData> getTransitions(final JiraWorkflow workflow, final StepDescriptor step, final Map<Integer, List<FieldScreen>> screensForAction)
     {
         List<TransitionData> transitions = Lists.newArrayList();
         for (Object transitionObject : workflow.getDescriptor().getStep(step.getId()).getActions())
         {
             ActionDescriptor transitionAction = (ActionDescriptor) transitionObject;
-            Status targetStatus = getTargetStatus(workflow, transitionAction);
-            transitions.add(new TransitionData().setName(transitionAction.getName())
-                                                .setId(transitionAction.getId())
-                                                .setToStatus(targetStatus.getName())
-                                                .setToCategory(targetStatus.getStatusCategory().getName())
-                                                .setScreens(getScreens(transitionAction, screensForAction))
-                                                .setFunctions(getFunctions(workflow, transitionAction))
-                                                .setConditions(getConditions(workflow, transitionAction)));
+            transitions.add(getTransitionData(workflow, transitionAction, screensForAction));
         }
         return transitions;
     }
@@ -157,6 +168,16 @@ public class WorkflowSchemeDataFactoryImpl implements WorkflowSchemeDataFactory
                                            .setStepName(step.getName())
                                            .setCategory(status.getStatusCategory().getName())
                                            .setTransitions(getTransitions(workflow, step, screensForAction)));
+        }
+
+        // add the create transition against a separate Status
+        ActionDescriptor createAction = getCreateAction(workflow);
+        if (createAction != null)
+        {
+            statusData.add(new StatusData().setName("Create")
+                                           .setStepName("Create")
+                                           .setCategory("Create")
+                                           .setTransitions(Lists.newArrayList(getTransitionData(workflow, createAction, screensForAction))));
         }
         return statusData;
     }
